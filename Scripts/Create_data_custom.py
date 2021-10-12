@@ -18,7 +18,9 @@ def get_factors(x):
 data = pd.read_csv('../Data/winequality-red.csv',sep=';')
 data_labels = data.pop('quality')
 
-p = PolynomialFeatures(degree=3).fit(data)
+degree_of_polynomial = 2
+
+p = PolynomialFeatures(degree=degree_of_polynomial).fit(data)
 poly_names = p.get_feature_names(data.columns)
 poly_data = p.transform(data)
 
