@@ -42,16 +42,16 @@ val_step = 300  # The number of iterations for determining algorithm convergence
 
 
 
-# Run the IGTD algorithm using (1) the Euclidean distance for calculating pairwise feature distances and pariwise pixel
-# distances and (2) the absolute function for evaluating the difference between the feature distance ranking matrix and
-# the pixel distance ranking matrix. Save the result in Test_1 folder.
-fea_dist_method = 'Euclidean'
-image_dist_method = 'Euclidean'
-error = 'abs'
-result_dir = '../Results/Test_1'
-os.makedirs(name=result_dir, exist_ok=True)
-table_to_image(norm_data, [num_row, num_col], fea_dist_method, image_dist_method, save_image_size,
-               max_step, val_step, result_dir, error)
+# # Run the IGTD algorithm using (1) the Euclidean distance for calculating pairwise feature distances and pariwise pixel
+# # distances and (2) the absolute function for evaluating the difference between the feature distance ranking matrix and
+# # the pixel distance ranking matrix. Save the result in Test_1 folder.
+# fea_dist_method = 'Euclidean'
+# image_dist_method = 'Euclidean'
+# error = 'abs'
+# result_dir = '../Results/Test_1'
+# os.makedirs(name=result_dir, exist_ok=True)
+# table_to_image(norm_data, [num_row, num_col], fea_dist_method, image_dist_method, save_image_size,
+#                max_step, val_step, result_dir, error)
 
 # Run the IGTD algorithm using (1) the Pearson correlation coefficient for calculating pairwise feature distances,
 # (2) the Manhattan distance for calculating pariwise pixel distances, and (3) the square function for evaluating
