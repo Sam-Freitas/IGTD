@@ -21,6 +21,7 @@ from sklearn.model_selection import LeaveOneOut,KFold, train_test_split
 imgs_location = '../Results/Test_2/Data'
 data = pd.read_csv('../Data/winequality-red.csv',sep=';')
 train_y = data.pop('quality').values
+train_X_tabular = np.array(data.values)
 
 categorical_classes = tf.keras.utils.to_categorical(train_y)
 
@@ -41,6 +42,12 @@ def double_expand_dims(np_array):
 
     return expanded_array 
 
+def single_expand_dims(np_array):
+
+    expanded_array = np.expand_dims(np_array,axis= 2)
+
+    return expanded_array
+
 def make_dataset(X_data,y_data,n_splits):
 
     def gen():
@@ -54,8 +61,8 @@ def make_dataset(X_data,y_data,n_splits):
 for count, this_img in enumerate(imgs_list):
 
     temp_img = np.loadtxt(this_img, comments="#", delimiter="\t", unpack=False)
-    temp_img = cv2.resize(temp_img, (img_height,img_width))
-    temp_img = double_expand_dims(temp_img)
+    # temp_img = cv2.resize(temp_img, (img_height,img_width))
+    temp_img = single_expand_dims(temp_img)
 
     if count > 0:
         train_X = np.concatenate([train_X,temp_img],axis = 0)
@@ -63,28 +70,30 @@ for count, this_img in enumerate(imgs_list):
         train_X = temp_img
 
 model = Sequential([
-    layers.experimental.preprocessing.Rescaling(1./255),
-    layers.Conv2D(4, (3,3), padding='same', activation='relu'),
-    layers.MaxPooling2D(pool_size=(2, 2)),
-    layers.Dropout(0.2),
+    # layers.experimental.preprocessing.Rescaling(1./255),
+    # layers.Conv2D(4, (2,2), padding='same', activation='relu',kernel_regularizer=tf.keras.regularizers.L1L2()),
+    # layers.MaxPooling2D(pool_size=(2, 2)),
+    # layers.Dropout(0.6),
     # layers.Conv2D(8, (2), padding='same', activation='relu'),
     # layers.Dropout(0.2),
     # layers.MaxPooling2D(pool_size=(2, 2)),
     # layers.Conv2D(16, (2), padding='same', activation='relu'),
     # layers.MaxPooling2D(),
     # layers.Dropout(0.2),
-    layers.Flatten(),
-    layers.Dense(128, activation='relu'),
+    # layers.Flatten(),
+    layers.Bidirectional(layers.LSTM(128, return_sequences=False)),
+    layers.Dropout(0.75),
+    # layers.Dense(4, activation='relu'),
     layers.Dense(num_classes,activation='sigmoid')
 ])
 
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
             loss=tf.keras.losses.CategoricalCrossentropy(),
             metrics=['categorical_accuracy'])
 
-es = tf.keras.callbacks.EarlyStopping(monitor='val_categorical_accuracy', patience=250 ,restore_best_weights=True)
+es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=250 ,restore_best_weights=True)
 
-X_train, X_test, y_train, y_test = train_test_split(train_X, categorical_classes, test_size=0.33, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(np.expand_dims(train_X_tabular,axis = 1), categorical_classes, test_size=0.33, random_state=42)
 
 epochs = 10000
 history = model.fit(
@@ -102,6 +111,5 @@ plt.legend(loc="upper left")
 plt.ylim([0,2])
 plt.savefig(fname='training_history.png', bbox_inches='tight',pad_inches=0)
 plt.show()
-
 
 print('eof')
