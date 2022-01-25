@@ -4,8 +4,8 @@ from IGTD_Functions_modified import min_max_transform, table_to_image
 
 
 
-num_row = 30    # Number of pixel rows in image representation
-num_col = 30    # Number of pixel columns in image representation
+num_row = 75    # Number of pixel rows in image representation
+num_col = 75    # Number of pixel columns in image representation
 num = num_row * num_col # Number of features to be included for analysis, which is also the total number of pixels in image representation
 save_image_size = 3 # Size of pictures (in inches) saved during the execution of IGTD algorithm.
 max_step = 10000    # The maximum number of iterations to run the IGTD algorithm, if it does not converge.
@@ -13,8 +13,7 @@ val_step = 300  # The number of iterations for determining algorithm convergence
                 # is smaller than a pre-set threshold for val_step itertions, the algorithm converges.
 
 # Import the example data and linearly scale each feature so that its minimum and maximum values are 0 and 1, respectively.
-data = pd.read_csv('../Data/Data.txt', low_memory=False, sep='\t', engine='c', na_values=['na', '-', ''], 
-                header=0, index_col=0)
+data = pd.read_csv('../Data/counttable_raw_rotated.csv',header=0, index_col=0)
 data = data.iloc[:, :num]
 norm_data = min_max_transform(data.values)
 norm_data = pd.DataFrame(norm_data, columns=data.columns, index=data.index)
