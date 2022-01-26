@@ -10,6 +10,8 @@ from scipy.spatial.distance import pdist, squareform
 import _pickle as cp
 import cv2
 
+# import cupy as np
+
 
 def min_max_transform(data):
     '''
@@ -30,6 +32,7 @@ def min_max_transform(data):
             norm_data[:, i] = 0
         else:
             v = (v - np.min(v)) / (np.max(v) - np.min(v))
+            # norm_data[:, i] = np.asarray(v)
             norm_data[:, i] = v
     return norm_data
 
@@ -591,30 +594,35 @@ def table_to_image(norm_d, scale, fea_dist_method, image_dist_method, save_image
         shutil.rmtree(normDir)
     os.mkdir(normDir)
 
+    print('Generating feature distance ranking')
     ranking_feature, corr = generate_feature_distance_ranking(data=norm_d, method=fea_dist_method)
     fig = plt.figure(figsize=(save_image_size, save_image_size))
     plt.imshow(np.max(ranking_feature) - ranking_feature, cmap='gray', interpolation='nearest')
-    plt.savefig(fname=normDir + '/original_feature_ranking.png', bbox_inches='tight', pad_inches=0)
+    plt.savefig(fname=normDir + '/original_feature_ranking.png', bbox_inches='tight', pad_inches=0,dpi = 250)
     plt.close(fig)
 
+    print('Generating matrix distance ranking')
     coordinate, ranking_image = generate_matrix_distance_ranking(num_r=scale[0], num_c=scale[1],
                                                                  method=image_dist_method)
     fig = plt.figure(figsize=(save_image_size, save_image_size))
     plt.imshow(np.max(ranking_image) - ranking_image, cmap='gray', interpolation='nearest')
-    plt.savefig(fname=normDir + '/image_ranking.png', bbox_inches='tight', pad_inches=0)
+    plt.savefig(fname=normDir + '/image_ranking.png', bbox_inches='tight', pad_inches=0,dpi = 250)
     plt.close(fig)
 
+    print('IGTD')
     index, err, time = IGTD(source=ranking_feature, target=ranking_image,
         err_measure=error, max_step=max_step, switch_t=switch_t, val_step=val_step, min_gain=min_gain, random_state=1,
         save_folder=normDir + '/' + error, file_name='')
 
+
+    print('Finishing up')
     fig = plt.figure()
     plt.plot(time, err)
-    plt.savefig(fname=normDir + '/error_and_runtime.png', bbox_inches='tight', pad_inches=0)
+    plt.savefig(fname=normDir + '/error_and_runtime.png', bbox_inches='tight', pad_inches=0,dpi = 250)
     plt.close(fig)
     fig = plt.figure()
     plt.plot(range(len(err)), err)
-    plt.savefig(fname=normDir + '/error_and_iteration.png', bbox_inches='tight', pad_inches=0)
+    plt.savefig(fname=normDir + '/error_and_iteration.png', bbox_inches='tight', pad_inches=0,dpi = 250)
     plt.close(fig)
     min_id = np.argmin(err)
     ranking_feature_random = ranking_feature[index[min_id, :], :]
@@ -623,7 +631,7 @@ def table_to_image(norm_d, scale, fea_dist_method, image_dist_method, save_image
     fig = plt.figure(figsize=(save_image_size, save_image_size))
     plt.imshow(np.max(ranking_feature_random) - ranking_feature_random, cmap='gray',
                interpolation='nearest')
-    plt.savefig(fname=normDir + '/optimized_feature_ranking.png', bbox_inches='tight', pad_inches=0)
+    plt.savefig(fname=normDir + '/optimized_feature_ranking.png', bbox_inches='tight', pad_inches=0,dpi = 250)
     plt.close(fig)
 
     data, samples = generate_image_data(data=norm_d, index=index[min_id, :], num_row=scale[0], num_column=scale[1],

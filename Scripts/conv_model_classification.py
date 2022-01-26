@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import os
 import glob
-from natsort import natsorted
+from natsort import natsorted, natsort_keygen
 import matplotlib.pyplot as plt
 import PIL
 import cv2
@@ -17,88 +17,65 @@ import time
 
 from tensorflow.python.keras.callbacks import EarlyStopping
 from sklearn.model_selection import LeaveOneOut,KFold, train_test_split
+from sklearn.preprocessing import LabelEncoder
 
-imgs_location = '../Results/Test_2/Data'
-data = pd.read_csv('../Data/winequality-red.csv',sep=';')
-train_y = data.pop('quality').values
-train_X_tabular = np.array(data.values)
+from tqdm import tqdm
 
-categorical_classes = tf.keras.utils.to_categorical(train_y)
+print('Loading in metadata')
+imgs_location = '../Results/Test_1/data'
+metadata = pd.read_csv('../Data/experimentDesign.csv')
 
-num_classes = len(categorical_classes[0])
+sorted_metadata = metadata.copy(deep=True)
+sorted_metadata = sorted_metadata.sort_values(by = 'sample_id',key = natsort_keygen())
+
+extracted_metadata = sorted_metadata['tissue'].values
+
+print('Encoding and categorizing labels')
+label_encoder = LabelEncoder()
+encoded_labels = label_encoder.fit_transform(extracted_metadata)
+train_y = tf.keras.utils.to_categorical(encoded_labels)
+
+num_classes = len(np.unique(encoded_labels))
 
 imgs_list = natsorted(glob.glob(os.path.join(imgs_location,'*.txt')))
 
-# img0 = np.asarray(PIL.Image.open(str(imgs_list[0])).convert('L'))
-img0 = np.loadtxt(imgs_list[0], comments="#", delimiter="\t", unpack=False)
+print('Loading in data from txt files')
+train_X = []
+for count in tqdm(range(len(imgs_list))):
 
-img_height, img_width = img0.shape
-img_height = img_width = max([img_height, img_width])
-batch_size = 32
-
-def double_expand_dims(np_array):
-
-    expanded_array = np.expand_dims(np.expand_dims(np_array,axis= -1),axis = 0)
-
-    return expanded_array 
-
-def single_expand_dims(np_array):
-
-    expanded_array = np.expand_dims(np_array,axis= 2)
-
-    return expanded_array
-
-def make_dataset(X_data,y_data,n_splits):
-
-    def gen():
-        for train_index, test_index in KFold(n_splits).split(X_data):
-            X_train, X_test = X_data[train_index], X_data[test_index]
-            y_train, y_test = y_data[train_index], y_data[test_index]
-            yield X_train,y_train,X_test,y_test
-
-    return tf.data.Dataset.from_generator(gen, (tf.float64,tf.float64,tf.float64,tf.float64))
-
-for count, this_img in enumerate(imgs_list):
-
+    this_img = imgs_list[count]
     temp_img = np.loadtxt(this_img, comments="#", delimiter="\t", unpack=False)
-    # temp_img = cv2.resize(temp_img, (img_height,img_width))
-    temp_img = single_expand_dims(temp_img)
 
-    if count > 0:
-        train_X = np.concatenate([train_X,temp_img],axis = 0)
-    else:
-        train_X = temp_img
+    train_X.append(temp_img)
 
+train_X = np.asarray(train_X)
+
+print('Building model')
 model = Sequential([
-    # layers.experimental.preprocessing.Rescaling(1./255),
-    # layers.Conv2D(4, (2,2), padding='same', activation='relu',kernel_regularizer=tf.keras.regularizers.L1L2()),
-    # layers.MaxPooling2D(pool_size=(2, 2)),
-    # layers.Dropout(0.6),
-    # layers.Conv2D(8, (2), padding='same', activation='relu'),
-    # layers.Dropout(0.2),
-    # layers.MaxPooling2D(pool_size=(2, 2)),
-    # layers.Conv2D(16, (2), padding='same', activation='relu'),
-    # layers.MaxPooling2D(),
-    # layers.Dropout(0.2),
-    # layers.Flatten(),
-    layers.Bidirectional(layers.LSTM(128, return_sequences=False)),
-    layers.Dropout(0.75),
-    # layers.Dense(4, activation='relu'),
-    layers.Dense(num_classes,activation='sigmoid')
+    tf.keras.layers.Flatten(input_shape = (100,100)),
+    tf.keras.layers.Dense(1000,activation='relu'),
+    tf.keras.layers.Dense(1000,activation='relu'),
+    tf.keras.layers.Dense(num_classes,activation='sigmoid')
 ])
 
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+model = tf.keras.applications.resnet_v2.ResNet50V2(
+    include_top=True, weights=None, input_tensor=None,
+    input_shape=(100,100,1), pooling=None, classes= num_classes,
+    classifier_activation='softmax'
+)
+
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
             loss=tf.keras.losses.CategoricalCrossentropy(),
-            metrics=['categorical_accuracy'])
+            metrics=['accuracy'])
 
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=250 ,restore_best_weights=True)
 
-X_train, X_test, y_train, y_test = train_test_split(np.expand_dims(train_X_tabular,axis = 1), categorical_classes, test_size=0.33, random_state=42)
+# X_train, X_test, y_train, y_test = train_test_split(np.expand_dims(train_X_tabular,axis = 1), categorical_classes, test_size=0.33, random_state=42)
 
-epochs = 10000
+epochs = 250
 history = model.fit(
-    X_train,y_train,
-    validation_data = (X_test,y_test),
+    train_X,train_y,
+    validation_split=0.1,
     epochs=epochs,
     callbacks= [es]
 )
