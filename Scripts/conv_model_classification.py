@@ -1,4 +1,6 @@
 import enum
+from msilib.schema import _Validation_records
+from tabnanny import verbose
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -8,15 +10,16 @@ from natsort import natsorted, natsort_keygen
 import matplotlib.pyplot as plt
 import PIL
 import cv2
+import json
 
 from tensorflow import keras
 from tensorflow.keras import layers, datasets, models
 from tensorflow.keras.models import Sequential
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 import pathlib
 import time
 
-from tensorflow.python.keras.callbacks import EarlyStopping
-from sklearn.model_selection import LeaveOneOut,KFold, train_test_split
+from sklearn.model_selection import LeaveOneOut,KFold, train_test_split,StratifiedKFold
 from sklearn.preprocessing import LabelEncoder
 
 from tqdm import tqdm
@@ -44,49 +47,78 @@ train_X = []
 for count in tqdm(range(len(imgs_list))):
 
     this_img = imgs_list[count]
-    temp_img = np.loadtxt(this_img, comments="#", delimiter="\t", unpack=False)
+    temp_img = np.loadtxt(this_img, comments="#", delimiter="\t", unpack=False).astype(np.uint8)
 
     train_X.append(temp_img)
 
 train_X = np.asarray(train_X)
 
-print('Building model')
-model = Sequential([
-    tf.keras.layers.Flatten(input_shape = (100,100)),
-    tf.keras.layers.Dense(1000,activation='relu'),
-    tf.keras.layers.Dense(1000,activation='relu'),
-    tf.keras.layers.Dense(num_classes,activation='sigmoid')
-])
+skf = StratifiedKFold(n_splits=5)
 
-model = tf.keras.applications.resnet_v2.ResNet50V2(
+print('Building model')
+# model = Sequential([
+#     tf.keras.layers.Flatten(input_shape = (100,100)),
+#     tf.keras.layers.Dense(1000,activation='relu'),
+#     tf.keras.layers.Dense(1000,activation='relu'),
+#     tf.keras.layers.Dense(num_classes,activation='sigmoid')
+# ])
+
+kfold_counter = 1
+for train_index, test_index in skf.split(train_X, encoded_labels):
+
+    model = tf.keras.applications.resnet_v2.ResNet50V2(
     include_top=True, weights=None, input_tensor=None,
     input_shape=(100,100,1), pooling=None, classes= num_classes,
     classifier_activation='softmax'
-)
+    )
 
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
-            loss=tf.keras.losses.CategoricalCrossentropy(),
-            metrics=['accuracy'])
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
+                loss=tf.keras.losses.CategoricalCrossentropy(),
+                metrics=['accuracy'])
 
-es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=250 ,restore_best_weights=True)
+    checkpoint_path = "training_weights_kfold_" + str(kfold_counter) + "/cp.ckpt" 
+    checkpoint_dir = os.path.dirname(checkpoint_path)
 
-# X_train, X_test, y_train, y_test = train_test_split(np.expand_dims(train_X_tabular,axis = 1), categorical_classes, test_size=0.33, random_state=42)
+    checkpoint = ModelCheckpoint(filepath = checkpoint_path,monitor = "val_accuracy", mode = 'max',
+        save_best_only = True,verbose=1,save_weights_only=True) #use checkpoint instead of sequential() module
+    earlystop = EarlyStopping(monitor = 'val_loss', min_delta=0.00001,
+        patience = 25, verbose = 1,restore_best_weights = True) #stop at best epoch
+    reduce_lr = ReduceLROnPlateau(monitor = 'val_loss', factor=0.5,
+        patience=8, min_lr=0.0001, verbose = 1)
 
-epochs = 250
-history = model.fit(
-    train_X,train_y,
-    validation_split=0.1,
-    epochs=epochs,
-    callbacks= [es]
-)
+    kfold_X = train_X[train_index]
+    kfold_y = train_y[train_index]
 
-for this_key in list(history.history.keys()):
-    b = history.history[this_key]
-    plt.plot(b,label = this_key)
+    kfold_test = (train_X[test_index],train_y[test_index])
 
-plt.legend(loc="upper left")
-plt.ylim([0,2])
-plt.savefig(fname='training_history.png', bbox_inches='tight',pad_inches=0)
-plt.show()
+    epochs = 150
+    history = model.fit(
+        kfold_X,kfold_y,
+        validation_data = kfold_test,
+        epochs=epochs,
+        batch_size = 16,
+        callbacks= [earlystop, checkpoint,reduce_lr]
+    )
+
+    eval_result = model.evaluate(train_X,train_y,steps=1,return_dict = True,batch_size = 4) #get evaluation results
+    res = dict()
+    for key in eval_result: res[key] = round(eval_result[key], 5)
+
+    print(res)
+
+    for this_key in list(history.history.keys()):
+        b = history.history[this_key]
+        plt.plot(b,label = this_key)
+
+    plt.legend(loc="upper left")
+    plt.ylim([0,2])
+    plt.title(json.dumps(res))
+    plt.savefig(fname="training_history_" + str(kfold_counter) + ".png", bbox_inches='tight',pad_inches=0)
+    plt.show()
+
+    plt.close('all')
+    kfold_counter = kfold_counter + 1
+
+    del model
 
 print('eof')
