@@ -525,14 +525,14 @@ def generate_image_data(data, index, num_row, num_column, coord, image_folder=No
         data_i[coord] = data_2[i, :]
         image_data[:, :, i] = data_i
         if image_folder is not None:
-            # fig = plt.figure()
-            # plt.imshow(data_i, cmap='gray', vmin=0, vmax=255)
-            # plt.axis('off')
-            # plt.savefig(fname=image_folder + '/' + file_name + '_' + samples[i] + '_image.png', bbox_inches='tight',
-            #             pad_inches=0)
-            # plt.close(fig)
+            fig = plt.figure()
+            plt.imshow(data_i, cmap='gray', vmin=0, vmax=255)
+            plt.axis('off')
+            plt.savefig(fname=image_folder + '/' + file_name + '_' + samples[i] + '_image.png', bbox_inches='tight',
+                        pad_inches=0)
+            plt.close(fig)
 
-            cv2.imwrite(image_folder + '/' + file_name + '_' + samples[i] + '_image.png',data_i)
+            # cv2.imwrite(image_folder + '/' + file_name + '_' + samples[i] + '_image.png',data_i)
 
             pd.DataFrame(image_data[:, :, i], index=None, columns=None).to_csv(image_folder + '/' + file_name + '_'
                 + samples[i] + '_data.txt', header=None, index=None, sep='\t', line_terminator='\r\n')
@@ -542,7 +542,7 @@ def generate_image_data(data, index, num_row, num_column, coord, image_folder=No
 
 
 def table_to_image(norm_d, scale, fea_dist_method, image_dist_method, save_image_size, max_step, val_step, normDir,
-                   error, switch_t=0, min_gain=0.00001):
+                   error, switch_t=0, min_gain=0.00001, export_images = True):
     '''
     This function converts tabular data into images using the IGTD algorithm. 
 
@@ -598,7 +598,7 @@ def table_to_image(norm_d, scale, fea_dist_method, image_dist_method, save_image
     ranking_feature, corr = generate_feature_distance_ranking(data=norm_d, method=fea_dist_method)
     fig = plt.figure(figsize=(save_image_size, save_image_size))
     plt.imshow(np.max(ranking_feature) - ranking_feature, cmap='gray', interpolation='nearest')
-    plt.savefig(fname=normDir + '/original_feature_ranking.png', bbox_inches='tight', pad_inches=0,dpi = 250)
+    plt.savefig(fname=normDir + '/original_feature_ranking.png', pad_inches=0,dpi = 350)
     plt.close(fig)
 
     print('Generating matrix distance ranking')
@@ -606,7 +606,7 @@ def table_to_image(norm_d, scale, fea_dist_method, image_dist_method, save_image
                                                                  method=image_dist_method)
     fig = plt.figure(figsize=(save_image_size, save_image_size))
     plt.imshow(np.max(ranking_image) - ranking_image, cmap='gray', interpolation='nearest')
-    plt.savefig(fname=normDir + '/image_ranking.png', bbox_inches='tight', pad_inches=0,dpi = 250)
+    plt.savefig(fname=normDir + '/image_ranking.png', pad_inches=0,dpi = 350)
     plt.close(fig)
 
     print('IGTD')
@@ -618,11 +618,11 @@ def table_to_image(norm_d, scale, fea_dist_method, image_dist_method, save_image
     print('Finishing up')
     fig = plt.figure()
     plt.plot(time, err)
-    plt.savefig(fname=normDir + '/error_and_runtime.png', bbox_inches='tight', pad_inches=0,dpi = 250)
+    plt.savefig(fname=normDir + '/error_and_runtime.png', pad_inches=0,dpi = 350)
     plt.close(fig)
     fig = plt.figure()
     plt.plot(range(len(err)), err)
-    plt.savefig(fname=normDir + '/error_and_iteration.png', bbox_inches='tight', pad_inches=0,dpi = 250)
+    plt.savefig(fname=normDir + '/error_and_iteration.png', pad_inches=0,dpi = 350)
     plt.close(fig)
     min_id = np.argmin(err)
     ranking_feature_random = ranking_feature[index[min_id, :], :]
@@ -631,22 +631,24 @@ def table_to_image(norm_d, scale, fea_dist_method, image_dist_method, save_image
     fig = plt.figure(figsize=(save_image_size, save_image_size))
     plt.imshow(np.max(ranking_feature_random) - ranking_feature_random, cmap='gray',
                interpolation='nearest')
-    plt.savefig(fname=normDir + '/optimized_feature_ranking.png', bbox_inches='tight', pad_inches=0,dpi = 250)
+    plt.savefig(fname=normDir + '/optimized_feature_ranking.png', pad_inches=0,dpi = 350)
     plt.close(fig)
 
-    data, samples = generate_image_data(data=norm_d, index=index[min_id, :], num_row=scale[0], num_column=scale[1],
-        coord=coordinate, image_folder=normDir + '/data', file_name='')
+    if export_images:
 
-    output = open(normDir + '/Results.pkl', 'wb')
-    cp.dump(norm_d, output)
-    cp.dump(data, output)
-    cp.dump(samples, output)
-    output.close()
+        data, samples = generate_image_data(data=norm_d, index=index[min_id, :], num_row=scale[0], num_column=scale[1],
+            coord=coordinate, image_folder=normDir + '/data', file_name='')
 
-    output = open(normDir + '/Results_Auxiliary.pkl', 'wb')
-    cp.dump(ranking_feature, output)
-    cp.dump(ranking_image, output)
-    cp.dump(coordinate, output)
-    cp.dump(err, output)
-    cp.dump(time, output)
-    output.close()
+        output = open(normDir + '/Results.pkl', 'wb')
+        cp.dump(norm_d, output)
+        cp.dump(data, output)
+        cp.dump(samples, output)
+        output.close()
+
+        output = open(normDir + '/Results_Auxiliary.pkl', 'wb')
+        cp.dump(ranking_feature, output)
+        cp.dump(ranking_image, output)
+        cp.dump(coordinate, output)
+        cp.dump(err, output)
+        cp.dump(time, output)
+        output.close()
