@@ -36,7 +36,7 @@ def idx_by_spearman_coef(data,metadata):
     df = pd.DataFrame.from_dict(output,orient = 'index', columns = ['Spearman_coef','p-value','dist_coef'])
     df = df.sort_values(['Spearman_coef'], ascending = False)
 
-    df2 = pd.read_csv('/home/u23/samfreitas/NN_trainings/CNN_regression/dense_regression/sorting_csv.csv',header=0, index_col=0)
+    df2 = pd.read_csv('../Data/sorting_csv.csv',header=0, index_col=0)
 
     # a = list(df.sort_values(['dist_coef'], ascending = False).index)
     # b = list(df.sort_values(['p-value'], ascending = True).index)
