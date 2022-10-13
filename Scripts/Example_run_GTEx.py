@@ -51,16 +51,18 @@ def idx_by_spearman_coef(data,metadata):
 num_row = 97    # Number of pixel rows in image representation
 num_col = 97    # Number of pixel columns in image representation
 num = num_row * num_col # Number of features to be included for analysis, which is also the total number of pixels in image representation
-save_image_size = 10 # Size of pictures (in inches) saved during the execution of IGTD algorithm.
-max_step = 50000    # The maximum number of iterations to run the IGTD algorithm, if it does not converge.
-val_step = 100  # The number of iterations for determining algorithm convergence. If the error reduction rate
+save_image_size = 5 # Size of pictures (in inches) saved during the execution of IGTD algorithm.
+max_step = 100000    # The maximum number of iterations to run the IGTD algorithm, if it does not converge.
+val_step = 1000  # The number of iterations for determining algorithm convergence. If the error reduction rate
                 # is smaller than a pre-set threshold for val_step itertions, the algorithm converges.
 
 # # Import the example data and linearly scale each feature so that its minimum and maximum values are 0 and 1, respectively.
 print('Loading in data')
-data = pd.read_csv('../Data/GTEx_merge_L1000.csv',header=0)
+# data = pd.read_csv('../Data/GTEx_merge_L1000.csv',header=0)
+data = pd.read_csv('/xdisk/sutphin/GTEx/Normalized/GTEx_merge_L1000.csv', header = 0)
 data = data.transpose()
-metadata = pd.read_csv('../Data/GTEx_merge_L1000_sample.csv',header=0)
+# metadata = pd.read_csv('../Data/GTEx_merge_L1000_sample.csv',header=0)
+metadata = pd.read_csv('/xdisk/sutphin/GTEx/Normalized/GTEx_merge_L1000_sample.csv',header=0)
 
 # sort the tissues by sample id
 metadata = metadata.sort_values(by = ['ID'], ascending = True)
@@ -68,7 +70,7 @@ data = data.sort_index(ascending = True)
 # get rid of metadata that isnt in the data
 
 # this_tissue = 'All_tissues'
-this_tissue = 'GTEx_merge_L1000'
+this_tissue = 'GTEx_merge_L1000_100000epochs'
 # print('min/max transforming')
 
 print('Normalizing data')
@@ -91,14 +93,14 @@ os.makedirs(name=result_dir, exist_ok=True)
 table_to_image(data, [num_row, num_col], fea_dist_method, image_dist_method, save_image_size,
                max_step, val_step, result_dir, error,export_images = True)
 
-# # Run the IGTD algorithm using (1) the Pearson correlation coefficient for calculating pairwise feature distances,
-# # (2) the Manhattan distance for calculating pariwise pixel distances, and (3) the square function for evaluating
-# # the difference between the feature distance ranking matrix and the pixel distance ranking matrix.
-# # Save the result in Test_2 folder.
-# fea_dist_method = 'Pearson'
-# image_dist_method = 'Manhattan'
-# error = 'squared'
-# result_dir = '../Results/' + this_tissue + '_2_' + str(num)
-# os.makedirs(name=result_dir, exist_ok=True)
-# table_to_image(data, [num_row, num_col], fea_dist_method, image_dist_method, save_image_size,
-#                max_step, val_step, result_dir, error,export_images = True)
+# Run the IGTD algorithm using (1) the Pearson correlation coefficient for calculating pairwise feature distances,
+# (2) the Manhattan distance for calculating pariwise pixel distances, and (3) the square function for evaluating
+# the difference between the feature distance ranking matrix and the pixel distance ranking matrix.
+# Save the result in Test_2 folder.
+fea_dist_method = 'Pearson'
+image_dist_method = 'Manhattan'
+error = 'squared'
+result_dir = '../Results/' + this_tissue + '_2_' + str(num)
+os.makedirs(name=result_dir, exist_ok=True)
+table_to_image(data, [num_row, num_col], fea_dist_method, image_dist_method, save_image_size,
+               max_step, val_step, result_dir, error,export_images = True)
